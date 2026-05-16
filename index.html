@@ -1,0 +1,1958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BitReel — Premium Streaming</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <style>
+    /* ============================================================
+       BITREEL — DESIGN TOKENS & RESET
+    ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --surface2: #1a1a24;
+      --accent: #e5162a;
+      --accent-dim: rgba(229,22,42,0.15);
+      --accent-glow: rgba(229,22,42,0.4);
+      --text: #f0f0f0;
+      --muted: #888;
+      --border: rgba(255,255,255,0.07);
+      --radius: 8px;
+      --font-head: 'Bebas Neue', sans-serif;
+      --font-body: 'DM Sans', sans-serif;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-body);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { cursor: pointer; border: none; outline: none; font-family: var(--font-body); }
+    input, textarea, select {
+      font-family: var(--font-body);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      padding: 10px 14px;
+      width: 100%;
+      font-size: 0.95rem;
+      transition: border-color 0.2s;
+    }
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    img { display: block; max-width: 100%; }
+    table { border-collapse: collapse; width: 100%; }
+
+    /* ============================================================
+       SETUP BANNER
+    ============================================================ */
+    #setup-banner {
+      background: linear-gradient(90deg, #7c1a00, #4a0010);
+      border-bottom: 1px solid var(--accent);
+      padding: 10px 20px;
+      text-align: center;
+      font-size: 0.9rem;
+      display: none;
+      z-index: 9999;
+      position: relative;
+    }
+    #setup-banner a { color: var(--accent); font-weight: 600; }
+
+    /* ============================================================
+       NAVBAR
+    ============================================================ */
+    #navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      background: rgba(10,10,15,0.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+    }
+    .nav-logo {
+      font-family: var(--font-head);
+      font-size: 1.8rem;
+      letter-spacing: 2px;
+      color: var(--text);
+      flex-shrink: 0;
+    }
+    .nav-logo span { color: var(--accent); }
+    .nav-links { display: flex; gap: 20px; flex: 1; align-items: center; }
+    .nav-links a {
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--muted);
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+    .nav-search-btn {
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.1rem;
+      padding: 6px;
+      border-radius: 50%;
+      transition: color 0.2s, background 0.2s;
+    }
+    .nav-search-btn:hover { color: var(--text); background: var(--surface2); }
+    .nav-avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      position: relative;
+    }
+    .nav-dropdown {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      min-width: 160px;
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .nav-dropdown.open { display: flex; }
+    .nav-dropdown a, .nav-dropdown button {
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      color: var(--text);
+      background: transparent;
+      text-align: left;
+      transition: background 0.15s;
+      width: 100%;
+    }
+    .nav-dropdown a:hover, .nav-dropdown button:hover { background: var(--surface2); }
+    .nav-dropdown .sep { height: 1px; background: var(--border); }
+
+    /* ============================================================
+       FILM GRAIN OVERLAY
+    ============================================================ */
+    .grain-overlay {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1000;
+      opacity: 0.025;
+    }
+    .grain-overlay::after {
+      content: '';
+      position: absolute;
+      inset: -100%;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      animation: grain 0.4s steps(3) infinite;
+    }
+    @keyframes grain {
+      0%, 100% { transform: translate(0, 0); }
+      25% { transform: translate(-2%, -3%); }
+      50% { transform: translate(3%, 2%); }
+      75% { transform: translate(-1%, 4%); }
+    }
+
+    /* ============================================================
+       APP CONTAINER
+    ============================================================ */
+    #app { min-height: 100vh; }
+
+    /* ============================================================
+       BUTTONS
+    ============================================================ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 22px;
+      border-radius: var(--radius);
+      font-size: 0.95rem;
+      font-weight: 600;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: #c0101f; transform: translateY(-1px); box-shadow: 0 4px 20px var(--accent-glow); }
+    .btn-secondary {
+      background: rgba(255,255,255,0.12);
+      color: var(--text);
+      backdrop-filter: blur(4px);
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.2); transform: translateY(-1px); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { color: var(--text); border-color: var(--accent); }
+    .btn-sm { padding: 6px 14px; font-size: 0.82rem; }
+    .btn-danger { background: var(--accent); color: #fff; }
+    .btn-danger:hover { background: #c0101f; }
+
+    /* ============================================================
+       TOAST
+    ============================================================ */
+    #toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .toast {
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 500;
+      max-width: 320px;
+      animation: toastIn 0.3s ease;
+      border-left: 3px solid transparent;
+    }
+    .toast.success { background: #0d2b1a; border-color: #2ecc71; color: #2ecc71; }
+    .toast.error { background: #2b0d0d; border-color: var(--accent); color: #ff6b6b; }
+    .toast.info { background: var(--surface); border-color: var(--muted); color: var(--text); }
+    @keyframes toastIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* ============================================================
+       MODAL
+    ============================================================ */
+    #modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(4px);
+      z-index: 500;
+      display: none;
+      align-items: flex-start;
+      justify-content: center;
+      overflow-y: auto;
+      padding: 40px 16px;
+    }
+    #modal-overlay.open { display: flex; }
+    #modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      width: 100%;
+      max-width: 640px;
+      padding: 32px;
+      position: relative;
+      animation: modalIn 0.25s ease;
+      margin: auto;
+    }
+    @keyframes modalIn {
+      from { transform: translateY(-20px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 1.4rem;
+      line-height: 1;
+      padding: 4px 8px;
+      border-radius: 4px;
+      transition: color 0.2s;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-title {
+      font-family: var(--font-head);
+      font-size: 1.6rem;
+      letter-spacing: 1px;
+      margin-bottom: 24px;
+    }
+
+    /* ============================================================
+       FORM HELPERS
+    ============================================================ */
+    .form-group { margin-bottom: 16px; }
+    .form-label { display: block; font-size: 0.82rem; font-weight: 500; color: var(--muted); margin-bottom: 6px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .form-error { color: var(--accent); font-size: 0.82rem; margin-top: 4px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+    .form-hint { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+    textarea { resize: vertical; min-height: 80px; }
+    .checkbox-row { display: flex; align-items: center; gap: 8px; }
+    .checkbox-row input[type="checkbox"] { width: auto; }
+
+    /* ============================================================
+       SKELETON SHIMMER
+    ============================================================ */
+    @keyframes shimmer {
+      0% { background-position: -400px 0; }
+      100% { background-position: 400px 0; }
+    }
+    .skeleton {
+      background: linear-gradient(90deg, var(--surface) 25%, var(--surface2) 50%, var(--surface) 75%);
+      background-size: 800px 100%;
+      animation: shimmer 1.4s infinite;
+      border-radius: var(--radius);
+    }
+    .skel-card { width: 160px; height: 240px; flex-shrink: 0; }
+    .skel-hero { height: 480px; width: 100%; }
+    .skel-text { height: 16px; margin-bottom: 8px; }
+    .skel-text.w60 { width: 60%; }
+    .skel-text.w40 { width: 40%; }
+
+    /* ============================================================
+       CONTENT CARDS
+    ============================================================ */
+    .content-card {
+      position: relative;
+      flex-shrink: 0;
+      width: 160px;
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .content-card:hover {
+      transform: scale(1.06);
+      box-shadow: 0 0 20px var(--accent-glow);
+      z-index: 2;
+    }
+    .content-card img {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      display: block;
+    }
+    .content-card .card-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.3) 50%, transparent 100%);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      padding: 12px;
+      opacity: 0;
+      transition: opacity 0.25s;
+    }
+    .content-card:hover .card-overlay { opacity: 1; }
+    .card-title { font-size: 0.82rem; font-weight: 600; line-height: 1.3; margin-bottom: 4px; }
+    .card-meta { font-size: 0.72rem; color: var(--muted); margin-bottom: 8px; }
+    .card-genres { display: flex; gap: 4px; flex-wrap: wrap; }
+    .genre-chip {
+      font-size: 0.65rem;
+      padding: 2px 6px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      border-radius: 3px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-weight: 600;
+    }
+    .card-play-btn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0.8);
+      background: rgba(229,22,42,0.9);
+      border: none;
+      border-radius: 50%;
+      width: 40px; height: 40px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+      font-size: 1rem;
+      opacity: 0;
+      transition: opacity 0.25s, transform 0.25s;
+    }
+    .content-card:hover .card-play-btn {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* ============================================================
+       HORIZONTAL SCROLL ROWS
+    ============================================================ */
+    .row-section { margin-bottom: 36px; }
+    .row-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 60px;
+      margin-bottom: 14px;
+    }
+    .row-title { font-family: var(--font-head); font-size: 1.4rem; letter-spacing: 1px; }
+    .row-scroll-wrap { position: relative; }
+    .row-scroll-btn {
+      position: absolute;
+      top: 50%; transform: translateY(-50%);
+      z-index: 3;
+      background: rgba(10,10,15,0.85);
+      border: 1px solid var(--border);
+      color: var(--text);
+      width: 40px; height: 80px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .row-scroll-btn:hover { background: var(--surface); }
+    .row-scroll-btn.left { left: 0; border-radius: 0 var(--radius) var(--radius) 0; }
+    .row-scroll-btn.right { right: 0; border-radius: var(--radius) 0 0 var(--radius); }
+    .row-scroll {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding: 8px 60px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .row-scroll::-webkit-scrollbar { display: none; }
+    .row-scroll .content-card { scroll-snap-align: start; }
+
+    /* ============================================================
+       LANDING PAGE
+    ============================================================ */
+    .landing-hero {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      padding: 80px 24px;
+    }
+    .landing-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        radial-gradient(ellipse 60% 50% at 20% 50%, rgba(229,22,42,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 50% at 80% 50%, rgba(229,22,42,0.08) 0%, transparent 60%);
+      animation: orb-pulse 8s ease-in-out infinite alternate;
+    }
+    @keyframes orb-pulse {
+      from { opacity: 0.6; transform: scale(1); }
+      to { opacity: 1; transform: scale(1.05); }
+    }
+    .landing-hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.03) 2px,
+        rgba(0,0,0,0.03) 4px
+      );
+      pointer-events: none;
+    }
+    .landing-tagline-small {
+      font-size: 0.8rem;
+      letter-spacing: 0.25em;
+      color: var(--accent);
+      text-transform: uppercase;
+      font-weight: 600;
+      margin-bottom: 16px;
+      position: relative;
+      z-index: 1;
+    }
+    .landing-hero h1 {
+      font-family: var(--font-head);
+      font-size: clamp(3.5rem, 10vw, 7rem);
+      letter-spacing: 3px;
+      line-height: 1;
+      margin-bottom: 20px;
+      position: relative;
+      z-index: 1;
+    }
+    .landing-hero h1 em { color: var(--accent); font-style: normal; }
+    .landing-hero p {
+      font-size: 1.1rem;
+      color: var(--muted);
+      max-width: 520px;
+      margin-bottom: 36px;
+      line-height: 1.7;
+      position: relative;
+      z-index: 1;
+    }
+    .landing-ctas { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; }
+
+    .landing-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; padding: 60px 60px; }
+    .feature-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 28px;
+      transition: border-color 0.2s;
+    }
+    .feature-card:hover { border-color: var(--accent-glow); }
+    .feature-icon { font-size: 2rem; margin-bottom: 16px; }
+    .feature-card h3 { font-family: var(--font-head); font-size: 1.3rem; letter-spacing: 1px; margin-bottom: 8px; }
+    .feature-card p { font-size: 0.9rem; color: var(--muted); line-height: 1.6; }
+
+    .landing-blur-row {
+      padding: 0 60px 60px;
+      overflow: hidden;
+    }
+    .landing-blur-row h2 { font-family: var(--font-head); font-size: 1.6rem; letter-spacing: 1px; margin-bottom: 16px; }
+    .blur-cards {
+      display: flex;
+      gap: 12px;
+      overflow: hidden;
+    }
+    .blur-card {
+      flex-shrink: 0;
+      width: 140px; height: 210px;
+      border-radius: var(--radius);
+      background: var(--surface);
+      filter: blur(5px);
+      opacity: 0.6;
+      position: relative;
+      overflow: hidden;
+    }
+    .blur-card::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(45deg, rgba(229,22,42,0.15), transparent);
+    }
+    .blur-card-inner { width: 100%; height: 100%; background: linear-gradient(135deg, var(--surface2), var(--surface)); }
+
+    .landing-footer {
+      text-align: center;
+      padding: 40px;
+      border-top: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+    .landing-footer .logo { font-family: var(--font-head); font-size: 2rem; letter-spacing: 2px; margin-bottom: 8px; }
+    .landing-footer .logo span { color: var(--accent); }
+
+    /* ============================================================
+       AUTH PAGES
+    ============================================================ */
+    .auth-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 80px 16px;
+      position: relative;
+    }
+    .auth-page::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 50% 60% at 50% 40%, rgba(229,22,42,0.08) 0%, transparent 70%);
+    }
+    .auth-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px;
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      z-index: 1;
+    }
+    .auth-logo { font-family: var(--font-head); font-size: 2.2rem; letter-spacing: 2px; text-align: center; margin-bottom: 8px; }
+    .auth-logo span { color: var(--accent); }
+    .auth-subtitle { text-align: center; color: var(--muted); font-size: 0.9rem; margin-bottom: 32px; }
+    .auth-switch { text-align: center; margin-top: 20px; font-size: 0.9rem; color: var(--muted); }
+    .auth-switch a { color: var(--accent); font-weight: 600; }
+
+    /* ============================================================
+       BROWSE — HERO CAROUSEL
+    ============================================================ */
+    .browse-hero {
+      height: 520px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 40px;
+    }
+    .hero-slide {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      transition: opacity 0.8s ease;
+    }
+    .hero-slide.active { opacity: 1; }
+    .hero-slide-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+    }
+    .hero-slide-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to right, rgba(10,10,15,0.9) 0%, rgba(10,10,15,0.5) 50%, rgba(10,10,15,0.1) 100%),
+                  linear-gradient(to top, rgba(10,10,15,1) 0%, transparent 40%);
+    }
+    .hero-content {
+      position: absolute;
+      bottom: 60px;
+      left: 60px;
+      max-width: 500px;
+      z-index: 2;
+    }
+    .hero-badge { display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent); padding: 3px 10px; border-radius: 3px; margin-bottom: 12px; }
+    .hero-title { font-family: var(--font-head); font-size: 3.5rem; letter-spacing: 2px; line-height: 1; margin-bottom: 12px; }
+    .hero-desc { font-size: 0.95rem; color: var(--muted); line-height: 1.6; margin-bottom: 20px; max-width: 380px; }
+    .hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .hero-dots { position: absolute; bottom: 20px; left: 60px; display: flex; gap: 6px; z-index: 2; }
+    .hero-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.3); cursor: pointer; transition: all 0.2s; }
+    .hero-dot.active { background: var(--accent); width: 20px; border-radius: 3px; }
+
+    /* ============================================================
+       WATCH PAGE
+    ============================================================ */
+    .watch-page { padding-top: 60px; }
+    .watch-player-wrap { position: relative; width: 100%; padding-top: 56.25%; background: #000; }
+    .watch-player-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+    .watch-info { max-width: 900px; margin: 0 auto; padding: 32px 24px; }
+    .watch-title { font-family: var(--font-head); font-size: 2.4rem; letter-spacing: 2px; margin-bottom: 12px; }
+    .watch-meta-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 16px; }
+    .rating-badge { background: var(--accent-dim); color: var(--accent); border: 1px solid var(--accent); padding: 3px 10px; border-radius: 4px; font-size: 0.8rem; font-weight: 700; }
+    .watch-desc { color: var(--muted); line-height: 1.7; margin-bottom: 24px; }
+    .seasons-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+    .season-tab { padding: 6px 16px; background: var(--surface2); border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; font-weight: 500; color: var(--muted); cursor: pointer; transition: all 0.2s; }
+    .season-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .episodes-list { display: flex; flex-direction: column; gap: 8px; }
+    .episode-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .episode-row:hover { border-color: var(--accent); background: var(--surface2); }
+    .episode-row.active { border-color: var(--accent); background: var(--accent-dim); }
+    .ep-num { font-family: var(--font-head); font-size: 1.5rem; color: var(--accent); min-width: 36px; }
+    .ep-title { font-weight: 600; font-size: 0.9rem; }
+    .ep-desc { font-size: 0.8rem; color: var(--muted); margin-top: 2px; }
+
+    /* ============================================================
+       SEARCH PAGE
+    ============================================================ */
+    .search-page { padding: 100px 60px 60px; }
+    .search-page h1 { font-family: var(--font-head); font-size: 2rem; letter-spacing: 2px; margin-bottom: 20px; }
+    .search-bar-wrap { position: relative; max-width: 600px; margin-bottom: 24px; }
+    .search-bar-wrap svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--muted); }
+    .search-bar-wrap input { padding-left: 44px; font-size: 1rem; background: var(--surface); border-color: var(--border); }
+    .genre-pills { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 28px; }
+    .genre-pill {
+      padding: 5px 14px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .genre-pill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .genre-pill:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+    .search-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+    .empty-state { text-align: center; padding: 80px 20px; color: var(--muted); }
+    .empty-state .empty-icon { font-size: 3rem; margin-bottom: 16px; }
+    .empty-state h3 { font-family: var(--font-head); font-size: 1.6rem; letter-spacing: 1px; margin-bottom: 8px; color: var(--text); }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ============================================================
+       WATCHLIST
+    ============================================================ */
+    .watchlist-page { padding: 100px 60px 60px; }
+    .watchlist-page h1 { font-family: var(--font-head); font-size: 2.4rem; letter-spacing: 2px; margin-bottom: 28px; }
+    .watchlist-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+    .watchlist-card-wrap { position: relative; }
+    .watchlist-remove {
+      position: absolute;
+      top: 6px; right: 6px;
+      background: rgba(10,10,15,0.85);
+      border: 1px solid var(--border);
+      color: var(--accent);
+      border-radius: 50%;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem;
+      z-index: 3;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .watchlist-card-wrap:hover .watchlist-remove { opacity: 1; }
+
+    /* ============================================================
+       ADMIN PAGE
+    ============================================================ */
+    .admin-page { padding-top: 80px; min-height: 100vh; }
+    .admin-header { padding: 24px 40px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 20px; }
+    .admin-header h1 { font-family: var(--font-head); font-size: 2rem; letter-spacing: 2px; }
+    .admin-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); padding: 0 40px; }
+    .admin-tab {
+      padding: 14px 24px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      transition: color 0.2s, border-color 0.2s;
+    }
+    .admin-tab.active { color: var(--text); border-color: var(--accent); }
+    .admin-tab:hover:not(.active) { color: var(--text); }
+    .admin-panel { padding: 32px 40px; display: none; }
+    .admin-panel.active { display: block; }
+    .admin-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+    .admin-panel-header h2 { font-family: var(--font-head); font-size: 1.5rem; letter-spacing: 1px; }
+    .admin-table-wrap { overflow-x: auto; }
+    .admin-table { width: 100%; border-collapse: collapse; }
+    .admin-table th { text-align: left; padding: 10px 12px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); border-bottom: 1px solid var(--border); font-weight: 600; }
+    .admin-table td { padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 0.88rem; vertical-align: middle; }
+    .admin-table tr:last-child td { border-bottom: none; }
+    .admin-table tr:hover td { background: rgba(255,255,255,0.02); }
+    .admin-thumb { width: 40px; height: 56px; border-radius: 4px; object-fit: cover; }
+    .status-badge { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
+    .status-badge.used { background: #0d2b1a; color: #2ecc71; }
+    .status-badge.unused { background: var(--surface2); color: var(--muted); }
+    .status-badge.admin { background: rgba(229,22,42,0.2); color: var(--accent); }
+    .status-badge.user { background: var(--surface2); color: var(--muted); }
+    .status-badge.movie { background: rgba(100,100,255,0.15); color: #8888ff; }
+    .status-badge.series { background: rgba(255,165,0,0.15); color: #ffaa44; }
+    .code-mono { font-family: monospace; font-size: 0.9rem; letter-spacing: 0.1em; background: var(--surface2); padding: 3px 8px; border-radius: 4px; }
+    .featured-toggle {
+      width: 36px; height: 20px;
+      border-radius: 10px;
+      background: var(--surface2);
+      position: relative;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      transition: background 0.2s;
+    }
+    .featured-toggle.on { background: var(--accent); border-color: var(--accent); }
+    .featured-toggle::after {
+      content: '';
+      position: absolute;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      top: 2px; left: 2px;
+      transition: left 0.2s;
+    }
+    .featured-toggle.on::after { left: 18px; }
+    .avatar-initials {
+      width: 34px; height: 34px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+    }
+    .bulk-gen-row { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+    .bulk-gen-row input[type="number"] { width: 80px; }
+
+    /* ============================================================
+       RESPONSIVE
+    ============================================================ */
+    @media (max-width: 768px) {
+      .row-header, .row-scroll { padding-left: 20px; padding-right: 20px; }
+      .hero-content { left: 20px; right: 20px; bottom: 80px; }
+      .hero-title { font-size: 2.2rem; }
+      .search-page, .watchlist-page { padding-left: 20px; padding-right: 20px; }
+      .admin-page .admin-header, .admin-tabs, .admin-panel { padding-left: 20px; padding-right: 20px; }
+      .landing-features { padding: 40px 20px; }
+      .landing-blur-row { padding: 0 20px 40px; }
+      .form-row { grid-template-columns: 1fr; }
+      .nav-links { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Film grain -->
+<div class="grain-overlay"></div>
+
+<!-- Setup Banner -->
+<div id="setup-banner">
+  ⚙️ <strong>Setup Required:</strong> Please fill in your Supabase URL and anon key in the script constants. <a href="https://supabase.com" target="_blank">Get them here →</a>
+</div>
+
+<!-- Navbar (hidden on landing/auth) -->
+<nav id="navbar" style="display:none">
+  <a href="#/" class="nav-logo">BIT<span>REEL</span></a>
+  <div class="nav-links">
+    <a href="#/browse">Browse</a>
+    <a href="#/search">Search</a>
+    <a href="#/watchlist">Watchlist</a>
+    <a id="admin-link" href="#/admin" style="display:none">Admin</a>
+  </div>
+  <div class="nav-right">
+    <button class="nav-search-btn" onclick="location.hash='#/search'" title="Search">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <div class="nav-avatar" id="nav-avatar" onclick="toggleDropdown()">
+      <span id="nav-initials">?</span>
+      <div class="nav-dropdown" id="nav-dropdown">
+        <a href="#/watchlist">My Watchlist</a>
+        <a id="nav-admin-link" href="#/admin" style="display:none">Admin Panel</a>
+        <div class="sep"></div>
+        <button onclick="signOut()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- App Root -->
+<div id="app"></div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Modal -->
+<div id="modal-overlay" onclick="handleOverlayClick(event)">
+  <div id="modal-box"></div>
+</div>
+
+<script type="module">
+/* ================================================================
+   BITREEL — CONFIGURATION
+   Fill in your Supabase credentials below.
+   Get them from: https://supabase.com → Project Settings → API
+================================================================ */
+const SUPABASE_URL = 'https://tcvbbblebqrusppvdvrz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjdmJiYmxlYnFydXNwcHZkdnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzkzNjAsImV4cCI6MjA5NDQ1NTM2MH0.pUkExrGdigaDrX9mxHWjYFIGqW6tAxn7QFdTCKlgvyA';
+if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
+  document.getElementById('setup-banner').style.display = 'block';
+}
+
+/* ================================================================
+   SUPABASE CLIENT
+================================================================ */
+const { createClient } = supabase;
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ================================================================
+   GLOBAL STATE
+================================================================ */
+window.currentUser = null;
+window.currentProfile = null;
+let heroInterval = null;
+let heroIndex = 0;
+let heroSlides = [];
+let searchDebounce = null;
+let activeGenreFilter = null;
+
+/* ================================================================
+   UTILS
+================================================================ */
+function showToast(message, type = 'info') {
+  const tc = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = message;
+  tc.appendChild(t);
+  setTimeout(() => t.remove(), 3500);
+}
+
+function showModal(html) {
+  const box = document.getElementById('modal-box');
+  box.innerHTML = html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  document.getElementById('modal-box').innerHTML = '';
+}
+
+window.handleOverlayClick = function(e) {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+};
+
+window.closeModal = closeModal;
+
+function toggleDropdown() {
+  const dd = document.getElementById('nav-dropdown');
+  dd.classList.toggle('open');
+}
+
+// Close dropdown on outside click
+document.addEventListener('click', e => {
+  const avatar = document.getElementById('nav-avatar');
+  if (avatar && !avatar.contains(e.target)) {
+    document.getElementById('nav-dropdown')?.classList.remove('open');
+  }
+});
+
+function sanitizeEmbed(raw) {
+  if (!raw) return '';
+  // Remove hardcoded width/height from iframe tag
+  return raw.replace(/\s+width=["'][^"']*["']/g, ' width="100%"')
+            .replace(/\s+height=["'][^"']*["']/g, ' height="100%"');
+}
+
+function getInitials(name = '?') {
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
+function genCode(len = 8) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  return Array.from({ length: len }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
+
+function cardHTML(item, showRemove = false) {
+  const genres = (item.genre || []).slice(0, 2).map(g => `<span class="genre-chip">${g}</span>`).join('');
+  return `
+    <div class="content-card" onclick="location.hash='#/watch/${item.id}'">
+      <img src="${item.thumbnail_url || 'https://picsum.photos/seed/' + item.id + '/300/450'}" alt="${item.title}" loading="lazy" onerror="this.src='https://picsum.photos/300/450'" />
+      <button class="card-play-btn" title="Play">▶</button>
+      <div class="card-overlay">
+        <div class="card-title">${item.title}</div>
+        <div class="card-meta">${item.year || ''} ${item.rating ? '· ' + item.rating : ''}</div>
+        <div class="card-genres">${genres}</div>
+      </div>
+    </div>`;
+}
+
+/* ================================================================
+   AUTH & SESSION
+================================================================ */
+async function getSession() {
+  const { data: { session } } = await supabaseClient.auth.getSession();
+  if (session?.user) {
+    window.currentUser = session.user;
+    const { data } = await supabaseClient.from('profiles').select('*').eq('id', session.user.id).single();
+    window.currentProfile = data;
+    return true;
+  }
+  window.currentUser = null;
+  window.currentProfile = null;
+  return false;
+}
+
+window.signOut = async function() {
+  await supabaseClient.auth.signOut();
+  window.currentUser = null;
+  window.currentProfile = null;
+  location.hash = '#/';
+};
+
+function updateNavbar(loggedIn) {
+  const nav = document.getElementById('navbar');
+  const isAuthPage = ['#/login', '#/register', '#/'].some(p => location.hash === p || location.hash === '');
+  nav.style.display = (loggedIn && !isAuthPage) ? 'flex' : 'none';
+  if (loggedIn && window.currentProfile) {
+    document.getElementById('nav-initials').textContent = getInitials(window.currentProfile.username);
+    const isAdmin = window.currentProfile.role === 'admin';
+    document.getElementById('admin-link').style.display = isAdmin ? 'inline' : 'none';
+    document.getElementById('nav-admin-link').style.display = isAdmin ? 'block' : 'none';
+  }
+}
+
+/* ================================================================
+   ROUTER
+================================================================ */
+async function router() {
+  if (heroInterval) { clearInterval(heroInterval); heroInterval = null; }
+
+  const hash = location.hash || '#/';
+  const loggedIn = await getSession();
+  updateNavbar(loggedIn);
+
+  const app = document.getElementById('app');
+
+  // Public routes
+  if (hash === '#/' || hash === '') { app.innerHTML = renderLanding(); attachLandingListeners(); return; }
+  if (hash === '#/login') { app.innerHTML = renderLogin(); attachLoginListeners(); return; }
+  if (hash === '#/register') { app.innerHTML = renderRegister(); attachRegisterListeners(); return; }
+
+  // Protected routes
+  if (!loggedIn) { location.hash = '#/login'; return; }
+
+  if (hash === '#/browse') { app.innerHTML = renderBrowseSkeleton(); loadBrowse(); return; }
+  if (hash.startsWith('#/watch/')) {
+    const id = hash.replace('#/watch/', '');
+    app.innerHTML = renderWatchSkeleton();
+    loadWatch(id);
+    return;
+  }
+  if (hash === '#/search') { app.innerHTML = renderSearch(); attachSearchListeners(); return; }
+  if (hash === '#/watchlist') { app.innerHTML = renderWatchlistSkeleton(); loadWatchlist(); return; }
+  if (hash === '#/admin') {
+    if (window.currentProfile?.role !== 'admin') { location.hash = '#/browse'; return; }
+    app.innerHTML = renderAdminSkeleton();
+    loadAdmin();
+    return;
+  }
+
+  location.hash = '#/browse';
+}
+
+window.addEventListener('hashchange', router);
+router();
+
+/* ================================================================
+   LANDING PAGE
+================================================================ */
+function renderLanding() {
+  return `
+  <div style="padding-top:0">
+    <div class="landing-hero">
+      <div class="landing-tagline-small">✦ Invite-Only Access</div>
+      <h1>Premium Streaming.<br><em>Zero Cost.</em></h1>
+      <p>Curated cinema and series, handpicked for those who were invited. No ads, no compromises, no algorithm deciding what you love.</p>
+      <div class="landing-ctas">
+        <a href="#/login" class="btn btn-primary btn-lg">Sign In</a>
+        <a href="#/register" class="btn btn-secondary btn-lg">Register with Invite</a>
+      </div>
+    </div>
+
+    <div class="landing-features">
+      <div class="feature-card">
+        <div class="feature-icon">🎬</div>
+        <h3>Curated Library</h3>
+        <p>Every title is hand-selected. No filler, no bloat — just films and series that matter.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔐</div>
+        <h3>Invite Only</h3>
+        <p>BitReel is not for everyone. You need an invite code from someone who's already in.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⚡</div>
+        <h3>Zero Friction</h3>
+        <p>No ads, no tracking, no upsells. Just you and the screen, exactly as it should be.</p>
+      </div>
+    </div>
+
+    <div class="landing-blur-row">
+      <h2>The Library Awaits</h2>
+      <div class="blur-cards">
+        ${Array.from({length: 10}, (_, i) => `<div class="blur-card"><div class="blur-card-inner" style="background: linear-gradient(135deg, hsl(${i*36}deg 40% 8%), hsl(${i*36+20}deg 30% 15%))"></div></div>`).join('')}
+      </div>
+    </div>
+
+    <div class="landing-footer">
+      <div class="logo">BIT<span>REEL</span></div>
+      <p>© 2024 BitReel. Premium streaming for the invited.</p>
+    </div>
+  </div>`;
+}
+
+function attachLandingListeners() {}
+
+/* ================================================================
+   LOGIN PAGE
+================================================================ */
+function renderLogin() {
+  return `
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">BIT<span>REEL</span></div>
+      <div class="auth-subtitle">Sign in to your account</div>
+      <div id="auth-error" class="form-error" style="margin-bottom:12px;text-align:center"></div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="login-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password</label>
+        <input type="password" id="login-password" placeholder="••••••••" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px" id="login-btn">Sign In</button>
+      <div class="auth-switch">Don't have an account? <a href="#/register">Register with Invite</a></div>
+    </div>
+  </div>`;
+}
+
+function attachLoginListeners() {
+  const btn = document.getElementById('login-btn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const email = document.getElementById('login-email').value.trim();
+    const password = document.getElementById('login-password').value;
+    const errEl = document.getElementById('auth-error');
+    errEl.textContent = '';
+    btn.textContent = 'Signing in...';
+    btn.disabled = true;
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (error) {
+      errEl.textContent = error.message;
+      btn.textContent = 'Sign In';
+      btn.disabled = false;
+    } else {
+      location.hash = '#/browse';
+    }
+  });
+  document.getElementById('login-password').addEventListener('keydown', e => { if (e.key === 'Enter') btn.click(); });
+}
+
+/* ================================================================
+   REGISTER PAGE
+================================================================ */
+function renderRegister() {
+  return `
+  <div class="auth-page">
+    <div class="auth-card">
+      <div class="auth-logo">BIT<span>REEL</span></div>
+      <div class="auth-subtitle">Create your account</div>
+      <div id="reg-error" class="form-error" style="margin-bottom:12px;text-align:center"></div>
+      <div class="form-group">
+        <label class="form-label">Username</label>
+        <input type="text" id="reg-username" placeholder="cinephile42" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" id="reg-email" placeholder="you@example.com" />
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="reg-password" placeholder="••••••••" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Confirm Password</label>
+          <input type="password" id="reg-confirm" placeholder="••••••••" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Invite Code</label>
+        <input type="text" id="reg-code" placeholder="XXXXXXXX" style="text-transform:uppercase;letter-spacing:0.1em" />
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px" id="reg-btn">Create Account</button>
+      <div class="auth-switch">Already have an account? <a href="#/login">Sign In</a></div>
+    </div>
+  </div>`;
+}
+
+function attachRegisterListeners() {
+  const btn = document.getElementById('reg-btn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    const username = document.getElementById('reg-username').value.trim();
+    const email = document.getElementById('reg-email').value.trim();
+    const password = document.getElementById('reg-password').value;
+    const confirm = document.getElementById('reg-confirm').value;
+    const code = document.getElementById('reg-code').value.trim().toUpperCase();
+    const errEl = document.getElementById('reg-error');
+    errEl.textContent = '';
+
+    if (!username || !email || !password || !code) { errEl.textContent = 'All fields are required.'; return; }
+    if (password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
+    if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; return; }
+
+    btn.textContent = 'Checking invite...';
+    btn.disabled = true;
+
+    // Validate invite code
+    const { data: inviteData, error: inviteError } = await supabaseClient
+      .from('invite_codes')
+      .select('*')
+      .eq('code', code)
+      .eq('is_used', false)
+      .single();
+
+    if (inviteError || !inviteData) {
+      errEl.textContent = 'Invalid or already used invite code.';
+      btn.textContent = 'Create Account';
+      btn.disabled = false;
+      return;
+    }
+
+    btn.textContent = 'Creating account...';
+    const { data: authData, error: authError } = await supabaseClient.auth.signUp({ email, password });
+    if (authError) {
+      errEl.textContent = authError.message;
+      btn.textContent = 'Create Account';
+      btn.disabled = false;
+      return;
+    }
+
+    const userId = authData.user.id;
+
+    // Mark code as used
+    await supabaseClient.from('invite_codes').update({ is_used: true, used_by: userId, used_at: new Date().toISOString() }).eq('id', inviteData.id);
+
+    // Create profile
+    await supabaseClient.from('profiles').insert({ id: userId, username, role: 'user' });
+
+    showToast('Account created! Please check your email if confirmation is required.', 'success');
+    location.hash = '#/login';
+  });
+}
+
+/* ================================================================
+   BROWSE PAGE
+================================================================ */
+function renderBrowseSkeleton() {
+  return `
+  <div style="padding-top:60px">
+    <div class="skel-hero skeleton" style="width:100%;height:520px;border-radius:0"></div>
+    <div style="padding:32px 60px">
+      ${['Movies', 'Series', 'Recently Added'].map(t => `
+        <div class="row-section">
+          <div class="row-header"><div class="skeleton skel-text w40"></div></div>
+          <div class="row-scroll">${Array.from({length:6},()=>'<div class="skeleton skel-card"></div>').join('')}</div>
+        </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+async function loadBrowse() {
+  const { data: featured } = await supabaseClient.from('content').select('*').eq('featured', true).limit(6);
+  const { data: movies } = await supabaseClient.from('content').select('*').eq('type', 'movie').limit(20);
+  const { data: series } = await supabaseClient.from('content').select('*').eq('type', 'series').limit(20);
+  const { data: recent } = await supabaseClient.from('content').select('*').order('created_at', { ascending: false }).limit(20);
+
+  // Collect all genres
+  const allContent = [...(movies||[]), ...(series||[])];
+  const genreMap = {};
+  allContent.forEach(c => (c.genre || []).forEach(g => { genreMap[g] = genreMap[g] || []; genreMap[g].push(c); }));
+
+  heroSlides = featured || [];
+  heroIndex = 0;
+
+  document.getElementById('app').innerHTML = `
+    <div style="padding-top:60px">
+      ${renderHeroCarousel(heroSlides)}
+      <div style="padding:32px 0 60px">
+        ${renderScrollRow('Movies', movies || [])}
+        ${renderScrollRow('Series', series || [])}
+        ${renderScrollRow('Recently Added', recent || [])}
+        ${Object.entries(genreMap).slice(0, 4).map(([g, items]) => renderScrollRow(g, items)).join('')}
+      </div>
+    </div>`;
+
+  attachBrowseListeners();
+  if (heroSlides.length > 1) {
+    heroInterval = setInterval(() => {
+      heroIndex = (heroIndex + 1) % heroSlides.length;
+      setHeroSlide(heroIndex);
+    }, 6000);
+  }
+}
+
+function renderHeroCarousel(items) {
+  if (!items.length) return '<div style="height:520px;background:var(--surface)"></div>';
+  return `
+    <div class="browse-hero">
+      ${items.map((item, i) => `
+        <div class="hero-slide ${i === 0 ? 'active' : ''}">
+          <div class="hero-slide-bg" style="background-image:url('${item.backdrop_url || 'https://picsum.photos/seed/' + item.id + '/1280/720'}')"></div>
+          <div class="hero-content">
+            <div class="hero-badge">${item.type === 'series' ? '📺 Series' : '🎬 Movie'}</div>
+            <div class="hero-title">${item.title}</div>
+            <div class="hero-desc">${(item.description || '').slice(0, 160)}${item.description?.length > 160 ? '...' : ''}</div>
+            <div class="hero-actions">
+              <a href="#/watch/${item.id}" class="btn btn-primary">▶ Play Now</a>
+              <button class="btn btn-secondary watchlist-btn" data-id="${item.id}">+ Watchlist</button>
+            </div>
+          </div>
+        </div>`).join('')}
+      <div class="hero-dots">
+        ${items.map((_, i) => `<div class="hero-dot ${i === 0 ? 'active' : ''}" onclick="goHeroSlide(${i})"></div>`).join('')}
+      </div>
+    </div>`;
+}
+
+function setHeroSlide(idx) {
+  document.querySelectorAll('.hero-slide').forEach((s, i) => s.classList.toggle('active', i === idx));
+  document.querySelectorAll('.hero-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+  heroIndex = idx;
+}
+
+window.goHeroSlide = function(idx) {
+  setHeroSlide(idx);
+  clearInterval(heroInterval);
+  heroInterval = setInterval(() => {
+    heroIndex = (heroIndex + 1) % heroSlides.length;
+    setHeroSlide(heroIndex);
+  }, 6000);
+};
+
+function renderScrollRow(title, items) {
+  if (!items.length) return '';
+  return `
+    <div class="row-section">
+      <div class="row-header"><div class="row-title">${title}</div></div>
+      <div class="row-scroll-wrap">
+        <button class="row-scroll-btn left" onclick="scrollRow(this, -1)">‹</button>
+        <div class="row-scroll">${items.map(i => cardHTML(i)).join('')}</div>
+        <button class="row-scroll-btn right" onclick="scrollRow(this, 1)">›</button>
+      </div>
+    </div>`;
+}
+
+window.scrollRow = function(btn, dir) {
+  const row = btn.parentElement.querySelector('.row-scroll');
+  row.scrollBy({ left: dir * 600, behavior: 'smooth' });
+};
+
+function attachBrowseListeners() {
+  document.querySelectorAll('.watchlist-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      if (!window.currentUser) return;
+      const { error } = await supabaseClient.from('watchlist').insert({ user_id: window.currentUser.id, content_id: id });
+      if (error && error.code === '23505') showToast('Already in watchlist', 'info');
+      else if (error) showToast('Error adding to watchlist', 'error');
+      else showToast('Added to watchlist!', 'success');
+    });
+  });
+}
+
+/* ================================================================
+   WATCH PAGE
+================================================================ */
+function renderWatchSkeleton() {
+  return `
+  <div class="watch-page">
+    <div class="skeleton" style="width:100%;padding-top:56.25%;position:relative;border-radius:0"></div>
+    <div class="watch-info">
+      <div class="skeleton skel-text" style="width:50%;height:32px;margin-bottom:16px"></div>
+      <div class="skeleton skel-text w60"></div>
+    </div>
+  </div>`;
+}
+
+async function loadWatch(id) {
+  const { data: item } = await supabaseClient.from('content').select('*').eq('id', id).single();
+  if (!item) { document.getElementById('app').innerHTML = '<div class="empty-state" style="padding-top:120px"><div class="empty-icon">🎬</div><h3>Content Not Found</h3><p><a href="#/browse" style="color:var(--accent)">Back to Browse</a></p></div>'; return; }
+
+  let episodeHtml = '';
+  let currentEmbedId = 'main-embed';
+
+  if (item.type === 'series') {
+    const { data: eps } = await supabaseClient.from('episodes').select('*').eq('content_id', id).order('season').order('episode');
+    const seasons = [...new Set((eps || []).map(e => e.season))];
+    episodeHtml = `
+      <div style="margin-top:32px">
+        <h3 style="font-family:var(--font-head);font-size:1.3rem;letter-spacing:1px;margin-bottom:12px">Episodes</h3>
+        <div class="seasons-tabs" id="seasons-tabs">
+          ${seasons.map(s => `<button class="season-tab ${s === seasons[0] ? 'active' : ''}" onclick="showSeason(${s}, this)" data-season="${s}">Season ${s}</button>`).join('')}
+        </div>
+        <div class="episodes-list" id="episodes-list">
+          ${(eps || []).filter(e => e.season === seasons[0]).map(e => `
+            <div class="episode-row" onclick="playEpisode('${e.iframe_embed}', this)" data-embed="${encodeURIComponent(e.iframe_embed || '')}">
+              <div class="ep-num">${String(e.episode).padStart(2,'0')}</div>
+              <div>
+                <div class="ep-title">${e.title || 'Episode ' + e.episode}</div>
+                <div class="ep-desc">${e.description || ''}</div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+    window._allEps = eps || [];
+  }
+
+  // Check watchlist
+  let inWatchlist = false;
+  if (window.currentUser) {
+    const { data: wl } = await supabaseClient.from('watchlist').select('id').eq('user_id', window.currentUser.id).eq('content_id', id).single();
+    inWatchlist = !!wl;
+  }
+
+  const genres = (item.genre || []).map(g => `<span class="genre-chip">${g}</span>`).join('');
+
+  document.getElementById('app').innerHTML = `
+    <div class="watch-page">
+      <div class="watch-player-wrap" id="${currentEmbedId}">
+        ${sanitizeEmbed(item.iframe_embed) || '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted)">No video available</div>'}
+      </div>
+      <div class="watch-info">
+        <h1 class="watch-title">${item.title}</h1>
+        <div class="watch-meta-row">
+          ${item.rating ? `<span class="rating-badge">${item.rating}</span>` : ''}
+          ${item.year ? `<span style="color:var(--muted);font-size:0.9rem">${item.year}</span>` : ''}
+          <span class="status-badge ${item.type}">${item.type}</span>
+          <div class="card-genres">${genres}</div>
+        </div>
+        <p class="watch-desc">${item.description || ''}</p>
+        <button class="btn ${inWatchlist ? 'btn-ghost' : 'btn-secondary'}" id="wl-toggle" data-id="${id}" data-in="${inWatchlist}">
+          ${inWatchlist ? '✓ In Watchlist' : '+ Add to Watchlist'}
+        </button>
+        ${episodeHtml}
+      </div>
+    </div>`;
+
+  // Watchlist toggle
+  const wlBtn = document.getElementById('wl-toggle');
+  if (wlBtn) {
+    wlBtn.addEventListener('click', async () => {
+      const isIn = wlBtn.dataset.in === 'true';
+      if (isIn) {
+        await supabaseClient.from('watchlist').delete().eq('user_id', window.currentUser.id).eq('content_id', id);
+        wlBtn.textContent = '+ Add to Watchlist';
+        wlBtn.dataset.in = 'false';
+        wlBtn.className = 'btn btn-secondary';
+        showToast('Removed from watchlist', 'info');
+      } else {
+        await supabaseClient.from('watchlist').insert({ user_id: window.currentUser.id, content_id: id });
+        wlBtn.textContent = '✓ In Watchlist';
+        wlBtn.dataset.in = 'true';
+        wlBtn.className = 'btn btn-ghost';
+        showToast('Added to watchlist!', 'success');
+      }
+    });
+  }
+}
+
+window.showSeason = function(season, btn) {
+  document.querySelectorAll('.season-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const eps = (window._allEps || []).filter(e => e.season === season);
+  document.getElementById('episodes-list').innerHTML = eps.map(e => `
+    <div class="episode-row" onclick="playEpisode('${encodeURIComponent(e.iframe_embed || '')}', this)">
+      <div class="ep-num">${String(e.episode).padStart(2,'0')}</div>
+      <div>
+        <div class="ep-title">${e.title || 'Episode ' + e.episode}</div>
+        <div class="ep-desc">${e.description || ''}</div>
+      </div>
+    </div>`).join('');
+};
+
+window.playEpisode = function(encodedEmbed, row) {
+  document.querySelectorAll('.episode-row').forEach(r => r.classList.remove('active'));
+  row.classList.add('active');
+  const embed = sanitizeEmbed(decodeURIComponent(encodedEmbed));
+  document.getElementById('main-embed').innerHTML = embed || '<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--muted)">No video available</div>';
+};
+
+/* ================================================================
+   SEARCH PAGE
+================================================================ */
+function renderSearch() {
+  return `
+  <div class="search-page">
+    <h1>Search</h1>
+    <div class="search-bar-wrap">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search-input" placeholder="Search titles, descriptions..." />
+    </div>
+    <div class="genre-pills" id="genre-pills"></div>
+    <div class="search-results" id="search-results">
+      <div style="grid-column:1/-1;color:var(--muted);font-size:0.9rem">Start typing to search...</div>
+    </div>
+  </div>`;
+}
+
+async function attachSearchListeners() {
+  // Load genres
+  const { data: allContent } = await supabaseClient.from('content').select('genre');
+  const genres = [...new Set((allContent || []).flatMap(c => c.genre || []))].sort();
+  const pillsEl = document.getElementById('genre-pills');
+  if (pillsEl) {
+    pillsEl.innerHTML = genres.map(g => `<button class="genre-pill" onclick="filterGenre('${g}', this)">${g}</button>`).join('');
+  }
+
+  const input = document.getElementById('search-input');
+  if (!input) return;
+  input.addEventListener('input', () => {
+    clearTimeout(searchDebounce);
+    searchDebounce = setTimeout(() => runSearch(input.value.trim()), 300);
+  });
+}
+
+window.filterGenre = async function(genre, btn) {
+  document.querySelectorAll('.genre-pill').forEach(p => p.classList.remove('active'));
+  if (activeGenreFilter === genre) {
+    activeGenreFilter = null;
+    runSearch(document.getElementById('search-input')?.value || '');
+    return;
+  }
+  activeGenreFilter = genre;
+  btn.classList.add('active');
+  runSearch(document.getElementById('search-input')?.value || '');
+};
+
+async function runSearch(q) {
+  const resultsEl = document.getElementById('search-results');
+  if (!resultsEl) return;
+  resultsEl.innerHTML = '<div class="skeleton skel-card" style="height:60px;width:100%;grid-column:1/-1"></div>';
+
+  let query = supabaseClient.from('content').select('*');
+  if (q) query = query.or(`title.ilike.%${q}%,description.ilike.%${q}%`);
+  if (activeGenreFilter) query = query.contains('genre', [activeGenreFilter]);
+
+  const { data } = await query.limit(40);
+  if (!data || !data.length) {
+    resultsEl.innerHTML = `<div style="grid-column:1/-1" class="empty-state"><div class="empty-icon">🔍</div><h3>No Results</h3><p>Try a different search or genre filter</p></div>`;
+    return;
+  }
+  resultsEl.innerHTML = data.map(i => cardHTML(i)).join('');
+}
+
+/* ================================================================
+   WATCHLIST PAGE
+================================================================ */
+function renderWatchlistSkeleton() {
+  return `
+  <div class="watchlist-page">
+    <h1>My Watchlist</h1>
+    <div class="watchlist-grid">
+      ${Array.from({length: 8}, () => '<div class="skeleton skel-card"></div>').join('')}
+    </div>
+  </div>`;
+}
+
+async function loadWatchlist() {
+  if (!window.currentUser) return;
+  const { data } = await supabaseClient
+    .from('watchlist')
+    .select('id, content_id, content(*)')
+    .eq('user_id', window.currentUser.id)
+    .order('created_at', { ascending: false });
+
+  const items = (data || []).map(r => r.content).filter(Boolean);
+
+  if (!items.length) {
+    document.getElementById('app').innerHTML = `
+      <div class="watchlist-page">
+        <h1>My Watchlist</h1>
+        <div class="empty-state"><div class="empty-icon">🎬</div><h3>Nothing Here Yet</h3><p>Browse the library and add titles to your watchlist.</p><br><a href="#/browse" class="btn btn-primary">Browse Now</a></div>
+      </div>`;
+    return;
+  }
+
+  document.getElementById('app').innerHTML = `
+    <div class="watchlist-page">
+      <h1>My Watchlist</h1>
+      <div class="watchlist-grid" id="watchlist-grid">
+        ${items.map(item => `
+          <div class="watchlist-card-wrap" id="wlcard-${item.id}">
+            ${cardHTML(item)}
+            <button class="watchlist-remove" onclick="removeFromWatchlist('${item.id}', this)" title="Remove">✕</button>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+window.removeFromWatchlist = async function(contentId, btn) {
+  const wrap = document.getElementById('wlcard-' + contentId);
+  if (wrap) wrap.style.opacity = '0.3';
+  const { error } = await supabaseClient.from('watchlist').delete().eq('user_id', window.currentUser.id).eq('content_id', contentId);
+  if (error) {
+    if (wrap) wrap.style.opacity = '1';
+    showToast('Error removing item', 'error');
+  } else {
+    if (wrap) wrap.remove();
+    showToast('Removed from watchlist', 'info');
+    const grid = document.getElementById('watchlist-grid');
+    if (grid && !grid.children.length) loadWatchlist();
+  }
+};
+
+/* ================================================================
+   ADMIN PAGE
+================================================================ */
+function renderAdminSkeleton() {
+  return `
+  <div class="admin-page">
+    <div class="admin-header">
+      <h1>Admin Panel</h1>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchAdminTab('content', this)">Content</button>
+      <button class="admin-tab" onclick="switchAdminTab('invites', this)">Invite Codes</button>
+      <button class="admin-tab" onclick="switchAdminTab('users', this)">Users</button>
+    </div>
+    <div class="admin-panel active" id="panel-content">
+      <div class="skeleton" style="height:300px;border-radius:8px"></div>
+    </div>
+    <div class="admin-panel" id="panel-invites"></div>
+    <div class="admin-panel" id="panel-users"></div>
+  </div>`;
+}
+
+async function loadAdmin() {
+  await loadContentPanel();
+}
+
+window.switchAdminTab = function(name, btn) {
+  document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+  const panel = document.getElementById('panel-' + name);
+  panel.classList.add('active');
+  if (!panel.dataset.loaded) {
+    panel.dataset.loaded = '1';
+    if (name === 'invites') loadInvitesPanel();
+    if (name === 'users') loadUsersPanel();
+  }
+};
+
+/* --- CONTENT PANEL --- */
+async function loadContentPanel() {
+  const panel = document.getElementById('panel-content');
+  if (!panel) return;
+  panel.dataset.loaded = '1';
+  const { data: content } = await supabaseClient.from('content').select('*').order('created_at', { ascending: false });
+
+  panel.innerHTML = `
+    <div class="admin-panel-header">
+      <h2>Content Library</h2>
+      <button class="btn btn-primary btn-sm" onclick="openAddContentModal()">+ Add Content</button>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th></th><th>Title</th><th>Type</th><th>Year</th><th>Featured</th><th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="content-tbody">
+          ${(content || []).map(item => contentRowHTML(item)).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function contentRowHTML(item) {
+  return `
+    <tr id="crow-${item.id}">
+      <td><img class="admin-thumb" src="${item.thumbnail_url || 'https://picsum.photos/40/56'}" onerror="this.src='https://picsum.photos/40/56'" /></td>
+      <td><strong>${item.title}</strong></td>
+      <td><span class="status-badge ${item.type}">${item.type}</span></td>
+      <td>${item.year || '—'}</td>
+      <td>
+        <div class="featured-toggle ${item.featured ? 'on' : ''}" onclick="toggleFeatured('${item.id}', this)"></div>
+      </td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;padding-top:16px">
+        ${item.type === 'series' ? `<button class="btn btn-ghost btn-sm" onclick="openEpisodesModal('${item.id}', '${encodeURIComponent(item.title)}')">Episodes</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="openEditContentModal('${item.id}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="deleteContent('${item.id}')">Delete</button>
+      </td>
+    </tr>`;
+}
+
+window.toggleFeatured = async function(id, el) {
+  const newVal = !el.classList.contains('on');
+  el.classList.toggle('on');
+  const { error } = await supabaseClient.from('content').update({ featured: newVal }).eq('id', id);
+  if (error) { el.classList.toggle('on'); showToast('Error updating', 'error'); }
+  else showToast(newVal ? 'Featured!' : 'Unfeatured', 'success');
+};
+
+window.deleteContent = async function(id) {
+  if (!confirm('Delete this content? This cannot be undone.')) return;
+  const { error } = await supabaseClient.from('content').delete().eq('id', id);
+  if (error) showToast('Error deleting', 'error');
+  else { document.getElementById('crow-' + id)?.remove(); showToast('Deleted', 'success'); }
+};
+
+function contentFormHTML(item = {}) {
+  return `
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title">${item.id ? 'Edit Content' : 'Add Content'}</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input type="text" id="cf-title" value="${item.title || ''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Type</label>
+        <select id="cf-type">
+          <option value="movie" ${item.type === 'movie' ? 'selected' : ''}>Movie</option>
+          <option value="series" ${item.type === 'series' ? 'selected' : ''}>Series</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <textarea id="cf-desc">${item.description || ''}</textarea>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Year</label>
+        <input type="number" id="cf-year" value="${item.year || ''}" />
+      </div>
+      <div class="form-group">
+        <label class="form-label">Rating (e.g. PG-13, R)</label>
+        <input type="text" id="cf-rating" value="${item.rating || ''}" />
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Genres (comma-separated)</label>
+      <input type="text" id="cf-genres" value="${(item.genre || []).join(', ')}" placeholder="Action, Drama, Sci-Fi" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Thumbnail URL</label>
+      <input type="text" id="cf-thumb" value="${item.thumbnail_url || ''}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">Backdrop URL</label>
+      <input type="text" id="cf-backdrop" value="${item.backdrop_url || ''}" />
+    </div>
+    <div class="form-group">
+      <label class="form-label">KingVid Iframe Embed</label>
+      <textarea id="cf-embed" style="min-height:90px;font-family:monospace;font-size:0.8rem">${item.iframe_embed || ''}</textarea>
+      <div class="form-hint">In KingVid: find your title → Share → Iframe Player → paste the full &lt;iframe&gt; tag here</div>
+    </div>
+    <div class="form-group">
+      <div class="checkbox-row">
+        <input type="checkbox" id="cf-featured" ${item.featured ? 'checked' : ''} />
+        <label for="cf-featured" class="form-label" style="margin:0">Featured on homepage</label>
+      </div>
+    </div>
+    <div id="cf-error" class="form-error"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveContent('${item.id || ''}')">Save Content</button>
+    </div>`;
+}
+
+window.openAddContentModal = function() { showModal(contentFormHTML()); };
+
+window.openEditContentModal = async function(id) {
+  const { data } = await supabaseClient.from('content').select('*').eq('id', id).single();
+  showModal(contentFormHTML(data || {}));
+};
+
+window.saveContent = async function(id) {
+  const title = document.getElementById('cf-title').value.trim();
+  if (!title) { document.getElementById('cf-error').textContent = 'Title is required'; return; }
+  const genre = document.getElementById('cf-genres').value.split(',').map(g => g.trim()).filter(Boolean);
+  const payload = {
+    title,
+    type: document.getElementById('cf-type').value,
+    description: document.getElementById('cf-desc').value,
+    year: parseInt(document.getElementById('cf-year').value) || null,
+    rating: document.getElementById('cf-rating').value.trim(),
+    genre,
+    thumbnail_url: document.getElementById('cf-thumb').value.trim(),
+    backdrop_url: document.getElementById('cf-backdrop').value.trim(),
+    iframe_embed: document.getElementById('cf-embed').value.trim(),
+    featured: document.getElementById('cf-featured').checked,
+    created_by: window.currentUser?.id,
+  };
+
+  let error;
+  if (id) {
+    ({ error } = await supabaseClient.from('content').update(payload).eq('id', id));
+  } else {
+    ({ error } = await supabaseClient.from('content').insert(payload));
+  }
+  if (error) { document.getElementById('cf-error').textContent = error.message; return; }
+  closeModal();
+  showToast(id ? 'Content updated!' : 'Content added!', 'success');
+  loadContentPanel();
+};
+
+/* --- EPISODES MODAL --- */
+window.openEpisodesModal = async function(contentId, encodedTitle) {
+  const title = decodeURIComponent(encodedTitle);
+  const { data: eps } = await supabaseClient.from('episodes').select('*').eq('content_id', contentId).order('season').order('episode');
+
+  showModal(`
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title">${title} — Episodes</div>
+    <button class="btn btn-primary btn-sm" style="margin-bottom:16px" onclick="openAddEpisodeModal('${contentId}')">+ Add Episode</button>
+    <div class="admin-table-wrap">
+      <table class="admin-table" id="eps-table">
+        <thead><tr><th>S</th><th>Ep</th><th>Title</th><th></th></tr></thead>
+        <tbody>
+          ${(eps || []).map(e => `
+            <tr id="eprow-${e.id}">
+              <td>${e.season}</td>
+              <td>${e.episode}</td>
+              <td>${e.title || '—'}</td>
+              <td style="display:flex;gap:6px">
+                <button class="btn btn-ghost btn-sm" onclick="openEditEpisodeModal('${e.id}', '${contentId}')">Edit</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteEpisode('${e.id}')">Del</button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`);
+  window._currentEpContentId = contentId;
+};
+
+function episodeFormHTML(ep = {}, contentId = '') {
+  return `
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div class="modal-title">${ep.id ? 'Edit Episode' : 'Add Episode'}</div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Season</label><input type="number" id="epf-season" value="${ep.season || 1}" /></div>
+      <div class="form-group"><label class="form-label">Episode #</label><input type="number" id="epf-episode" value="${ep.episode || ''}" /></div>
+    </div>
+    <div class="form-group"><label class="form-label">Title</label><input type="text" id="epf-title" value="${ep.title || ''}" /></div>
+    <div class="form-group"><label class="form-label">Description</label><textarea id="epf-desc">${ep.description || ''}</textarea></div>
+    <div class="form-group">
+      <label class="form-label">KingVid Iframe Embed</label>
+      <textarea id="epf-embed" style="min-height:90px;font-family:monospace;font-size:0.8rem">${ep.iframe_embed || ''}</textarea>
+      <div class="form-hint">In KingVid: find your episode → Share → Iframe Player → paste here</div>
+    </div>
+    <div id="epf-error" class="form-error"></div>
+    <div class="form-actions">
+      <button class="btn btn-ghost" onclick="openEpisodesModal('${contentId}', encodeURIComponent('Episodes'))">Back</button>
+      <button class="btn btn-primary" onclick="saveEpisode('${ep.id || ''}', '${contentId}')">Save</button>
+    </div>`;
+}
+
+window.openAddEpisodeModal = function(contentId) { showModal(episodeFormHTML({}, contentId)); };
+window.openEditEpisodeModal = async function(epId, contentId) {
+  const { data } = await supabaseClient.from('episodes').select('*').eq('id', epId).single();
+  showModal(episodeFormHTML(data || {}, contentId));
+};
+
+window.saveEpisode = async function(id, contentId) {
+  const payload = {
+    content_id: contentId,
+    season: parseInt(document.getElementById('epf-season').value) || 1,
+    episode: parseInt(document.getElementById('epf-episode').value) || 1,
+    title: document.getElementById('epf-title').value.trim(),
+    description: document.getElementById('epf-desc').value.trim(),
+    iframe_embed: document.getElementById('epf-embed').value.trim(),
+  };
+  let error;
+  if (id) ({ error } = await supabaseClient.from('episodes').update(payload).eq('id', id));
+  else ({ error } = await supabaseClient.from('episodes').insert(payload));
+  if (error) { document.getElementById('epf-error').textContent = error.message; return; }
+  closeModal();
+  showToast(id ? 'Episode updated!' : 'Episode added!', 'success');
+};
+
+window.deleteEpisode = async function(id) {
+  if (!confirm('Delete this episode?')) return;
+  const { error } = await supabaseClient.from('episodes').delete().eq('id', id);
+  if (error) showToast('Error deleting', 'error');
+  else { document.getElementById('eprow-' + id)?.remove(); showToast('Deleted', 'success'); }
+};
+
+/* --- INVITES PANEL --- */
+async function loadInvitesPanel() {
+  const panel = document.getElementById('panel-invites');
+  if (!panel) return;
+  const { data: codes } = await supabaseClient.from('invite_codes').select('*, used_by_profile:profiles!invite_codes_used_by_fkey(username)').order('created_at', { ascending: false });
+
+  panel.innerHTML = `
+    <div class="admin-panel-header">
+      <h2>Invite Codes</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <div class="bulk-gen-row" style="margin:0">
+          <input type="number" id="bulk-count" value="1" min="1" max="50" style="width:70px" />
+          <button class="btn btn-primary btn-sm" onclick="bulkGenerateCodes()">Generate</button>
+        </div>
+      </div>
+    </div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th>Code</th><th>Status</th><th>Used By</th><th>Date Used</th><th></th></tr></thead>
+        <tbody id="codes-tbody">
+          ${(codes || []).map(c => codeRowHTML(c)).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+function codeRowHTML(c) {
+  const usedDate = c.used_at ? new Date(c.used_at).toLocaleDateString() : '—';
+  return `
+    <tr id="coderow-${c.id}">
+      <td><span class="code-mono">${c.code}</span></td>
+      <td><span class="status-badge ${c.is_used ? 'used' : 'unused'}">${c.is_used ? 'Used' : 'Unused'}</span></td>
+      <td>${c.used_by_profile?.username || '—'}</td>
+      <td>${usedDate}</td>
+      <td style="display:flex;gap:6px">
+        <button class="btn btn-ghost btn-sm" onclick="copyCode('${c.code}')">Copy</button>
+        ${!c.is_used ? `<button class="btn btn-danger btn-sm" onclick="deleteCode('${c.id}')">Del</button>` : ''}
+      </td>
+    </tr>`;
+}
+
+window.copyCode = function(code) {
+  navigator.clipboard.writeText(code).then(() => showToast('Code copied!', 'success'));
+};
+
+window.bulkGenerateCodes = async function() {
+  const count = parseInt(document.getElementById('bulk-count').value) || 1;
+  const codes = Array.from({ length: Math.min(count, 50) }, () => ({
+    code: genCode(),
+    created_by: window.currentUser?.id,
+    is_used: false,
+  }));
+  const { error } = await supabaseClient.from('invite_codes').insert(codes);
+  if (error) showToast('Error generating codes', 'error');
+  else { showToast(`Generated ${count} code(s)!`, 'success'); loadInvitesPanel(); }
+};
+
+window.deleteCode = async function(id) {
+  if (!confirm('Delete this code?')) return;
+  const { error } = await supabaseClient.from('invite_codes').delete().eq('id', id);
+  if (error) showToast('Error deleting', 'error');
+  else { document.getElementById('coderow-' + id)?.remove(); showToast('Deleted', 'success'); }
+};
+
+/* --- USERS PANEL --- */
+async function loadUsersPanel() {
+  const panel = document.getElementById('panel-users');
+  if (!panel) return;
+  const { data: profiles } = await supabaseClient.from('profiles').select('*');
+
+  panel.innerHTML = `
+    <div class="admin-panel-header"><h2>Users</h2></div>
+    <div class="admin-table-wrap">
+      <table class="admin-table">
+        <thead><tr><th></th><th>Username</th><th>Role</th><th>Actions</th></tr></thead>
+        <tbody>
+          ${(profiles || []).map(p => `
+            <tr id="urow-${p.id}">
+              <td><div class="avatar-initials">${getInitials(p.username)}</div></td>
+              <td><strong>${p.username}</strong></td>
+              <td><span class="status-badge ${p.role}">${p.role}</span></td>
+              <td style="display:flex;gap:6px">
+                <button class="btn btn-ghost btn-sm" onclick="toggleRole('${p.id}', '${p.role}')">
+                  ${p.role === 'admin' ? 'Make User' : 'Make Admin'}
+                </button>
+              </td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+}
+
+window.toggleRole = async function(id, currentRole) {
+  const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  const { error } = await supabaseClient.from('profiles').update({ role: newRole }).eq('id', id);
+  if (error) showToast('Error updating role', 'error');
+  else { showToast('Role updated!', 'success'); loadUsersPanel(); }
+};
+
+</script>
+</body>
+</html>
