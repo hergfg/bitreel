@@ -853,8 +853,100 @@
    Fill in your Supabase credentials below.
    Get them from: https://supabase.com → Project Settings → API
 ================================================================ */
-const SUPABASE_URL = 'https://tcvbbblebqrusppvdvrz.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjdmJiYmxlYnFydXNwcHZkdnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg4NzkzNjAsImV4cCI6MjA5NDQ1NTM2MH0.pUkExrGdigaDrX9mxHWjYFIGqW6tAxn7QFdTCKlgvyA';
+const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+
+/* ================================================================
+   REQUIRED SUPABASE SETUP
+   Run this SQL in your Supabase SQL editor:
+
+   -- profiles
+   create table profiles (
+     id uuid references auth.users on delete cascade primary key,
+     username text not null,
+     role text not null default 'user'
+   );
+   alter table profiles enable row level security;
+   create policy "Users can read all profiles" on profiles for select using (true);
+   create policy "Users can update own profile" on profiles for update using (auth.uid() = id);
+   create policy "Insert own profile" on profiles for insert with check (auth.uid() = id);
+
+   -- invite_codes
+   create table invite_codes (
+     id uuid default gen_random_uuid() primary key,
+     code text unique not null,
+     created_by uuid references auth.users,
+     used_by uuid references auth.users,
+     used_at timestamptz,
+     is_used boolean default false,
+     created_at timestamptz default now()
+   );
+   alter table invite_codes enable row level security;
+   create policy "Anyone can read unused codes" on invite_codes for select using (true);
+   create policy "Auth users can insert codes" on invite_codes for insert with check (auth.role() = 'authenticated');
+   create policy "Auth users can update codes" on invite_codes for update using (auth.role() = 'authenticated');
+   create policy "Auth users can delete codes" on invite_codes for delete using (auth.role() = 'authenticated');
+
+   -- content
+   create table content (
+     id uuid default gen_random_uuid() primary key,
+     title text not null,
+     description text,
+     type text not null default 'movie',
+     genre text[] default '{}',
+     year int,
+     rating text,
+     thumbnail_url text,
+     backdrop_url text,
+     iframe_embed text,
+     featured boolean default false,
+     created_by uuid references auth.users,
+     created_at timestamptz default now()
+   );
+   alter table content enable row level security;
+   create policy "Anyone can read content" on content for select using (true);
+   create policy "Auth users can modify content" on content for all using (auth.role() = 'authenticated');
+
+   -- episodes
+   create table episodes (
+     id uuid default gen_random_uuid() primary key,
+     content_id uuid references content on delete cascade,
+     season int not null default 1,
+     episode int not null,
+     title text,
+     description text,
+     iframe_embed text,
+     created_at timestamptz default now()
+   );
+   alter table episodes enable row level security;
+   create policy "Anyone can read episodes" on episodes for select using (true);
+   create policy "Auth users can modify episodes" on episodes for all using (auth.role() = 'authenticated');
+
+   -- watchlist
+   create table watchlist (
+     id uuid default gen_random_uuid() primary key,
+     user_id uuid references auth.users on delete cascade,
+     content_id uuid references content on delete cascade,
+     created_at timestamptz default now(),
+     unique(user_id, content_id)
+   );
+   alter table watchlist enable row level security;
+   create policy "Users manage own watchlist" on watchlist for all using (auth.uid() = user_id);
+
+================================================================
+   SEED DATA (paste into Supabase SQL editor):
+
+   insert into content (title, description, type, genre, year, rating, thumbnail_url, backdrop_url, iframe_embed, featured) values
+   ('Neon Horizon', 'A rogue AI develops consciousness in a near-future megacity and must decide humanity''s fate.', 'movie', array['Sci-Fi','Thriller'], 2024, 'PG-13', 'https://picsum.photos/seed/neon/300/450', 'https://picsum.photos/seed/neon/1280/720', '<iframe src="about:blank" width="640" height="360"></iframe>', true),
+   ('The Void Protocol', 'Special ops team enters a dimension of pure darkness to rescue trapped scientists.', 'movie', array['Action','Horror'], 2024, 'R', 'https://picsum.photos/seed/void/300/450', 'https://picsum.photos/seed/void/1280/720', '<iframe src="about:blank" width="640" height="360"></iframe>', true),
+   ('Ember & Ash', 'Two rival chefs in post-war Tokyo battle for the soul of a legendary restaurant.', 'series', array['Drama','Romance'], 2023, 'TV-MA', 'https://picsum.photos/seed/ember/300/450', 'https://picsum.photos/seed/ember/1280/720', '<iframe src="about:blank" width="640" height="360"></iframe>', true),
+   ('Starfall Chronicles', 'An intergalactic trader uncovers an ancient conspiracy threatening all sentient life.', 'series', array['Sci-Fi','Adventure'], 2024, 'TV-14', 'https://picsum.photos/seed/star/300/450', 'https://picsum.photos/seed/star/1280/720', '<iframe src="about:blank" width="640" height="360"></iframe>', false),
+   ('Blood Meridian Blues', 'A haunted sheriff tracks a supernatural killer across the American Southwest.', 'movie', array['Western','Horror'], 2023, 'R', 'https://picsum.photos/seed/blood/300/450', 'https://picsum.photos/seed/blood/1280/720', '<iframe src="about:blank" width="640" height="360"></iframe>', false),
+   ('City of Ghosts', 'Documentary series exploring urban legends that turn out to be frighteningly real.', 'series', array['Documentary','Horror'], 2024, 'TV-14', 'https://picsum.photos/seed/ghost/300/450', 'https://picsum.photos/seed/ghost/1280/720', '<iframe src="about:blank" width="640" height="360"></iframe>', false);
+
+================================================================ */
+
+// Check setup
 if (SUPABASE_URL === 'YOUR_SUPABASE_URL' || SUPABASE_ANON_KEY === 'YOUR_SUPABASE_ANON_KEY') {
   document.getElementById('setup-banner').style.display = 'block';
 }
